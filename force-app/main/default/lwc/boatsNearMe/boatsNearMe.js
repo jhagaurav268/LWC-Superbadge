@@ -16,7 +16,7 @@ export default class BoatsNearMe extends LightningElement {
     latitude;
     longitude;
 
-    // Add the wired method from the Apex Class
+    // Add the wired method from the Apex Class.
     // Name it getBoatsByLocation, and use latitude, longitude and boatTypeId
     // Handle the result and calls createMapMarkers
     @wire(getBoatsByLocation, { latitude: '$latitude', longitude: '$longitude', boatTypeId: '$boatTypeId' })
