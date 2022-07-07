@@ -1,4 +1,10 @@
-import { LightningElement } from 'lwc';
+import getBoats from '@salesforce/apex/BoatDataService.getBoats';
+import { api, LightningElement, track, wire } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { publish, MessageContext } from 'lightning/messageService';
+import updateBoatList from '@salesforce/apex/BoatDataService.updateBoatList';
+import { refreshApex } from '@salesforce/apex';
+import BOATMC from '@salesforce/messageChannel/BoatMessageChannel__c';
 
 const SUCCESS_TITLE = 'Success';
 const MESSAGE_SHIP_IT = 'Ship it!';
@@ -7,31 +13,64 @@ const ERROR_TITLE = 'Error';
 const ERROR_VARIANT = 'error';
 
 export default class BoatSearchResults extends LightningElement {
+    @api
     selectedBoatId;
-    columns = [];
+
+    columns = [
+        { label: 'Name', fieldName: 'Name', editable: true },
+        { label: 'Length', fieldName: 'Length__c', type: 'number' },
+        { label: 'Price', fieldName: 'Price__c', type: 'currency' },
+        { label: 'Description', fieldName: 'Description__c' },
+    ];
     boatTypeId = '';
-    boats;
+    @track boats;
     isLoading = false;
+    @track draftValues = [];
 
     // wired message context
+    @wire(MessageContext)
     messageContext;
     // wired getBoats method 
-    wiredBoats(result) { }
+    @wire(getBoats, { boatTypeId: '$boatTypeId' })
+    wiredBoats({ data, error }) {
+        if (data) {
+            this.boats = data;
+        } else if (error) {
+            console.log('Error :' + error);
+        }
+
+    }
 
     // public function that updates the existing boatTypeId property
     // uses notifyLoading
-    searchBoats(boatTypeId) { }
+    @api
+    searchBoats(boatTypeId) {
+        this.isLoading = true;
+        this.notifyLoading(this.isLoading);
+        this.boatTypeId = boatTypeId;
+    }
 
     // this public function must refresh the boats asynchronously
     // uses notifyLoading
-    refresh() { }
+    @api
+    async refresh() {
+        this.isLoading = true;
+        this.notifyLoading(this.isLoading);
+        await refreshApex(this.boats);
+        this.isLoading = false;
+        this.notifyLoading(this.isLoading);
+    }
 
     // this function must update selectedBoatId and call sendMessageService
-    updateSelectedTile() { }
+    updateSelectedTile(event) {
+        this.selectedBoatId = event.detail.boatId;
+        this.sendMessageService(this.selectedBoatId);
+    }
 
     // Publishes the selected boat Id on the BoatMC.
     sendMessageService(boatId) {
         // explicitly pass boatId to the parameter recordId
+        publish(this.messageContext, BOATMC, { recordId: boatId });
     }
 
     // The handleSave method must save the changes in the Boat Editor
@@ -44,10 +83,31 @@ export default class BoatSearchResults extends LightningElement {
         const updatedFields = event.detail.draftValues;
         // Update the records via Apex
         updateBoatList({ data: updatedFields })
-            .then(() => { })
-            .catch(error => { })
+            .then((result) => {
+                const toastEvent = new ShowToastEvent({
+                    title: SUCCESS_TITLE,
+                    variant: SUCCESS_VARIANT,
+                    message: MESSAGE_SHIP_IT,
+                });
+                this.dispatchEvent(toastEvent);
+                return this.refresh();
+            })
+            .catch(error => {
+                const toastEvent = new ShowToastEvent({
+                    title: ERROR_TITLE,
+                    variant: ERROR_VARIANT,
+                    message: error.message,
+                });
+                this.dispatchEvent(toastEvent);
+            })
             .finally(() => { });
     }
     // Check the current value of isLoading before dispatching the doneloading or loading custom event
-    notifyLoading(isLoading) { }
+    notifyLoading(isLoading) {
+        if (isLoading) {
+            this.dispatchEvent(new CustomEvent('loading'));
+        } else {
+            this.dispatchEvent(CustomEvent('doneloading'));
+        }
+    }
 }

@@ -4,7 +4,7 @@ import { NavigationMixin } from 'lightning/navigation';
 export default class BoatSearch extends NavigationMixin(LightningElement) {
     isLoading = false;
 
-    @track boatTypeId;
+    //@track boatTypeId;
 
     // Handles loading event
     handleLoading() {
@@ -19,9 +19,9 @@ export default class BoatSearch extends NavigationMixin(LightningElement) {
     // Handles search boat event
     // This custom event comes from the form
     searchBoats(event) {
-        this.boatTypeId = event.detail.boatTypeId;
-        const searchResults = this.template.querySelector('c-boat-search-results');
-        searchResults.searchBoats(this.boatTypeId);
+        let boatTypeId = event.detail.boatTypeId;
+        this.template.querySelector('c-boat-search-results').searchBoats(boatTypeId);
+        this.handleDoneLoading();
     }
 
     createNewBoat() {
