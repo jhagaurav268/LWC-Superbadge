@@ -36,7 +36,7 @@ export default class SimilarBoats extends NavigationMixin(LightningElement) {
     similarBoats({ error, data }) {
         if (data) {
             this.relatedBoats = data;
-            ethis.error = undefined;
+            this.error = undefined;
         } else if (error) {
             this.error = error;
         }
